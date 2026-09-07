@@ -9,6 +9,20 @@ const authApi = axios.create({
   }
 });
 
+authApi.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  const adminKey = import.meta.env.VITE_ADMIN_KEY || 'admin-secret-token';
+  
+  if (adminKey) {
+    config.headers['x-admin-key'] = adminKey;
+  }
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
 const TOKEN_KEY = 'edupulse_token';
 const USER_KEY = 'edupulse_user';
 
@@ -32,15 +46,7 @@ export const clearStoredAuth = () => {
   localStorage.removeItem(USER_KEY);
 };
 
-const getAdminHeaders = () => {
-  const token = getStoredToken();
-  const adminKey = import.meta.env.VITE_ADMIN_KEY || 'admin-secret-token';
-  const headers = { 'x-admin-key': adminKey };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-};
+// getAdminHeaders is removed as interceptor handles headers
 
 /**
  * Register user (student, teacher, admin)
@@ -71,11 +77,7 @@ export const getMe = async () => {
   const token = getStoredToken();
   if (!token) return null;
   
-  const response = await authApi.get('/me', {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+  const response = await authApi.get('/me');
   return response.data;
 };
 
@@ -91,7 +93,7 @@ export const getApprovalConfig = async () => {
  * Update global system approval mode configuration (Admin only)
  */
 export const updateApprovalConfig = async (approval_mode) => {
-  const response = await authApi.put('/config', { approval_mode }, { headers: getAdminHeaders() });
+  const response = await authApi.put('/config', { approval_mode });
   return response.data;
 };
 
@@ -103,10 +105,7 @@ export const getAllUsers = async (role, status) => {
   if (role) params.role = role;
   if (status) params.status = status;
 
-  const response = await authApi.get('/users', {
-    params,
-    headers: getAdminHeaders()
-  });
+  const response = await authApi.get('/users', { params });
   return response.data;
 };
 
@@ -114,7 +113,7 @@ export const getAllUsers = async (role, status) => {
  * Approve a user account registration request (Admin only)
  */
 export const approveUser = async (id) => {
-  const response = await authApi.put(`/users/${id}/approve`, {}, { headers: getAdminHeaders() });
+  const response = await authApi.put(`/users/${id}/approve`, {});
   return response.data;
 };
 
@@ -122,7 +121,7 @@ export const approveUser = async (id) => {
  * Reject a user account registration request (Admin only)
  */
 export const rejectUser = async (id, rejection_reason) => {
-  const response = await authApi.put(`/users/${id}/reject`, { rejection_reason }, { headers: getAdminHeaders() });
+  const response = await authApi.put(`/users/${id}/reject`, { rejection_reason });
   return response.data;
 };
 
