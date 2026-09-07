@@ -27,7 +27,12 @@ export function AuthProvider({ children }) {
           }
         } catch (err) {
           console.warn('Session expired or server unreachable:', err.message);
-          // Keep stored user if offline dev mode
+          // Keep stored user if offline dev mode, but clear if unauthorized
+          if (err.response && err.response.status === 401) {
+            setUser(null);
+            setToken(null);
+            clearStoredAuth();
+          }
         }
       }
       setLoading(false);
