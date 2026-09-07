@@ -29,14 +29,26 @@ export const extractYouTubeId = (url) => {
   return (match && match[2] && match[2].length === 11) ? match[2] : null;
 };
 
+import { withCache, invalidateCache } from '../utils/cache';
+
 /**
  * Fetch all videos (Public fetches active only; pass all=true for Admin to get all)
  */
-export const getVideos = async (all = false) => {
-  const response = await videoApi.get('', {
-    params: { all: all ? 'true' : 'false' }
-  });
-  return response.data;
+export const getVideos = async (all = false, limit, onBackgroundUpdate, signal) => {
+  const cacheKey = `randominnovators:videos:all=${all}&limit=${limit || 'none'}`;
+  return withCache(
+    cacheKey,
+    async () => {
+      const params = { all: all ? 'true' : 'false' };
+      if (limit) params.limit = limit;
+      const response = await videoApi.get('', { params, signal }).catch(e => {
+        if (e.name === 'CanceledError') throw e;
+        return { data: null };
+      });
+      return response.data;
+    },
+    onBackgroundUpdate
+  );
 };
 
 /**
@@ -54,6 +66,7 @@ export const createVideo = async (videoData) => {
   const response = await videoApi.post('', videoData, {
     headers: getAdminHeaders()
   });
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:videos');
   return response.data;
 };
 
@@ -64,6 +77,7 @@ export const updateVideo = async (id, videoData) => {
   const response = await videoApi.put(`/${id}`, videoData, {
     headers: getAdminHeaders()
   });
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:videos');
   return response.data;
 };
 
@@ -74,6 +88,7 @@ export const deleteVideo = async (id) => {
   const response = await videoApi.delete(`/${id}`, {
     headers: getAdminHeaders()
   });
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:videos');
   return response.data;
 };
 

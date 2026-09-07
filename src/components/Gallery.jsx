@@ -9,32 +9,38 @@ export default function Gallery({ limit, onExploreGallery }) {
   const [activeVideoId, setActiveVideoId] = useState(null);
 
   useEffect(() => {
-    fetchGalleryVideos();
-  }, []);
-
-  const fetchGalleryVideos = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getVideos(false);
-      if (res && res.success) {
-        const sorted = [...(res.data || [])].sort((a, b) => {
-          const pA = Number(a.priority) || 1;
-          const pB = Number(b.priority) || 1;
-          if (pA !== pB) return pA - pB;
-          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
-        });
-        setVideos(sorted);
-      } else {
-        setError(res?.message || 'Failed to load video gallery');
+    const controller = new AbortController();
+    const fetchGalleryVideos = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const handleData = (res) => {
+          if (res && res.success) {
+            const sorted = [...(res.data || [])].sort((a, b) => {
+              const pA = Number(a.priority) || 1;
+              const pB = Number(b.priority) || 1;
+              if (pA !== pB) return pA - pB;
+              return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+            });
+            setVideos(sorted);
+          } else {
+            setError(res?.message || 'Failed to load video gallery');
+          }
+        };
+        const res = await getVideos(false, limit, handleData, controller.signal);
+        handleData(res);
+      } catch (err) {
+        if (err.name !== 'CanceledError') {
+          console.error('Fetch Gallery Error:', err);
+          setError('Unable to connect to video gallery service.');
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Fetch Gallery Error:', err);
-      setError('Unable to connect to video gallery service.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchGalleryVideos();
+    return () => controller.abort();
+  }, [limit]);
 
   return (
     <section id="gallery" className="py-20 bg-slate-50/50 dark:bg-[#0b0f19] relative overflow-hidden transition-colors duration-200">

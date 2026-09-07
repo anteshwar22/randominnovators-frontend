@@ -28,41 +28,46 @@ export default function Team({ onExploreTeam, limit }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTeamMembers();
-  }, []);
+    const controller = new AbortController();
+    const fetchTeamMembers = async () => {
+      try {
+        setLoading(true);
 
-  const fetchTeamMembers = async () => {
-    try {
-      setLoading(true);
+        const handleData = (res) => {
+          if (res && res.success) {
+            const members = res.data || [];
 
-      const res = await getTeamMembersByCategory("employee");
+            // Sort team members according to their priority (serialNo), fallback to role priority
+            const sortedMembers = [...members].sort((a, b) => {
+              const priorityA = a.serialNo || 0;
+              const priorityB = b.serialNo || 0;
+              
+              if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+              }
 
-      if (res && res.success) {
-        const members = res.data || [];
+              // Fallback to role priority if serialNos are the same (e.g. both 0)
+              const rolePriorityA = rolePriority[a.role] || 999;
+              const rolePriorityB = rolePriority[b.role] || 999;
+              return rolePriorityA - rolePriorityB;
+            });
 
-        // Sort team members according to their priority (serialNo), fallback to role priority
-        const sortedMembers = [...members].sort((a, b) => {
-          const priorityA = a.serialNo || 0;
-          const priorityB = b.serialNo || 0;
-          
-          if (priorityA !== priorityB) {
-            return priorityA - priorityB;
+            setTeamMembers(sortedMembers);
           }
+        };
 
-          // Fallback to role priority if serialNos are the same (e.g. both 0)
-          const rolePriorityA = rolePriority[a.role] || 999;
-          const rolePriorityB = rolePriority[b.role] || 999;
-          return rolePriorityA - rolePriorityB;
-        });
-
-        setTeamMembers(sortedMembers);
+        const res = await getTeamMembersByCategory("employee", handleData, controller.signal);
+        handleData(res);
+      } catch (err) {
+        if (err.name !== 'CanceledError') console.error("Failed to fetch team members:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to fetch team members:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchTeamMembers();
+    return () => controller.abort();
+  }, []);
 
   return (
     <section id="team" className="py-24">

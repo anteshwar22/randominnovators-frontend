@@ -8,23 +8,27 @@ export default function Mentor() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMentors();
-  }, []);
-
-  const fetchMentors = async () => {
-    try {
-      setLoading(true);
-      const res = await getTeamMembersByCategory("mentor");
-      if (res && res.success) {
-        const sortedMentors = (res.data || []).sort((a, b) => (a.serialNo || 0) - (b.serialNo || 0));
-        setMentors(sortedMentors);
+    const controller = new AbortController();
+    const fetchMentors = async () => {
+      try {
+        setLoading(true);
+        const handleData = (res) => {
+          if (res && res.success) {
+            const sortedMentors = (res.data || []).sort((a, b) => (a.serialNo || 0) - (b.serialNo || 0));
+            setMentors(sortedMentors);
+          }
+        };
+        const res = await getTeamMembersByCategory("mentor", handleData, controller.signal);
+        handleData(res);
+      } catch (err) {
+        if (err.name !== 'CanceledError') console.error("Failed to fetch mentors:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to fetch mentors:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchMentors();
+    return () => controller.abort();
+  }, []);
 
   return (
     <section id="mentor" className="py-24">

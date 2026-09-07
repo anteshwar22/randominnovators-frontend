@@ -18,23 +18,31 @@ export default function Home({
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchProducts = async () => {
       try {
-        const response = await getProducts();
-        if (response.success) {
-          setProducts(response.data);
-        } else if (Array.isArray(response)) {
-           setProducts(response);
-        } else if (response.data) {
-           setProducts(response.data);
-        }
+        const handleData = (response) => {
+          if (!response) return;
+          if (response.success) {
+            setProducts(response.data);
+          } else if (Array.isArray(response)) {
+            setProducts(response);
+          } else if (response.data) {
+            setProducts(response.data);
+          }
+        };
+        const response = await getProducts(handleData, controller.signal);
+        handleData(response);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        if (error.name !== 'CanceledError') {
+          console.error("Error fetching products:", error);
+        }
       } finally {
         setLoadingProducts(false);
       }
     };
     fetchProducts();
+    return () => controller.abort();
   }, []);
 
   return (

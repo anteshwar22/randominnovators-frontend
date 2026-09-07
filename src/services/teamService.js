@@ -24,20 +24,41 @@ api.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
+import { withCache, invalidateCache } from '../utils/cache';
+
 /**
  * Get all team members
  */
-export const getTeamMembers = async () => {
-  const response = await api.get('/team');
-  return response.data;
+export const getTeamMembers = async (onBackgroundUpdate, signal) => {
+  return withCache(
+    'randominnovators:team',
+    async () => {
+      const response = await api.get('/team', { signal }).catch(e => {
+        if (e.name === 'CanceledError') throw e;
+        return { data: null };
+      });
+      return response.data;
+    },
+    onBackgroundUpdate
+  );
 };
 
 /**
  * Get team members by category ('team', 'mentor', 'employee', 'admin')
  */
-export const getTeamMembersByCategory = async (category) => {
-  const response = await api.get('/team', { params: { category } });
-  return response.data;
+export const getTeamMembersByCategory = async (category, onBackgroundUpdate, signal) => {
+  const cacheKey = category ? `randominnovators:team:${category}` : 'randominnovators:team';
+  return withCache(
+    cacheKey,
+    async () => {
+      const response = await api.get('/team', { params: { category }, signal }).catch(e => {
+        if (e.name === 'CanceledError') throw e;
+        return { data: null };
+      });
+      return response.data;
+    },
+    onBackgroundUpdate
+  );
 };
 
 /**
@@ -48,6 +69,7 @@ export const createTeamMember = async (memberData) => {
   const response = await api.post('/team', memberData, {
     headers: isFormData ? { 'Content-Type': undefined } : {}
   });
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:team');
   return response.data;
 };
 
@@ -59,6 +81,7 @@ export const updateTeamMember = async (id, memberData) => {
   const response = await api.put(`/team/${id}`, memberData, {
     headers: isFormData ? { 'Content-Type': undefined } : {}
   });
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:team');
   return response.data;
 };
 
@@ -67,6 +90,7 @@ export const updateTeamMember = async (id, memberData) => {
  */
 export const deleteTeamMember = async (id) => {
   const response = await api.delete(`/team/${id}`);
+  if (response.data && response.data.success !== false) invalidateCache('randominnovators:team');
   return response.data;
 };
 
