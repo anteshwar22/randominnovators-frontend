@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { getStoredToken } from './authService';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || 'admin-secret-token';
+import { API_BASE_URL, ADMIN_KEY } from './apiConfig';
 
 const videoApi = axios.create({
   baseURL: `${API_BASE_URL}/videos`,

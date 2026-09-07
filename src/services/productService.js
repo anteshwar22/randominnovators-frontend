@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { getStoredToken } from './authService';
 
-const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/products` : 'http://localhost:5000/api/products';
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY || 'admin-secret-token';
+import { API_BASE_URL, ADMIN_KEY } from './apiConfig';
+
+const API_URL = `${API_BASE_URL}/products`;
 
 const productAxios = axios.create({
   baseURL: API_URL,

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL, ADMIN_KEY } from './apiConfig';
 
 const authApi = axios.create({
   baseURL: `${API_BASE_URL}/auth`,
@@ -11,10 +11,9 @@ const authApi = axios.create({
 
 authApi.interceptors.request.use((config) => {
   const token = getStoredToken();
-  const adminKey = import.meta.env.VITE_ADMIN_KEY || 'admin-secret-token';
   
-  if (adminKey) {
-    config.headers['x-admin-key'] = adminKey;
+  if (ADMIN_KEY) {
+    config.headers['x-admin-key'] = ADMIN_KEY;
   }
   
   if (token) {
